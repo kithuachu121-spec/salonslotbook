@@ -1,0 +1,5 @@
+{
+  "name": "Book My Salon Manager",
+  "description": "A comprehensive multi-role salon booking system with dashboards for Customers, Owners, and Admins. Features time-slot management, booking tracking, and automated status updates.",
+  "requestFramePermissions": []
+}
