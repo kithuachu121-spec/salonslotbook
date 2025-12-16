@@ -40,7 +40,6 @@ export interface Salon {
   customSlots: { date: string; time: string }[]; // Manually added slots
   ownerPhone?: string; // Owner's login phone
   bookingCount?: number; // Total slots booked
-  image?: string; // Base64 string of the salon image
 }
 
 export interface User {

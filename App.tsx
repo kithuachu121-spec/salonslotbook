@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, UserRole } from './types';
-import { AuthService, SavedCredential, AdminService } from './services/mockBackend';
+import { AuthService, SavedCredential } from './services/mockBackend';
 import AdminDashboard from './components/AdminDashboard';
 import OwnerDashboard from './components/OwnerDashboard';
 import CustomerDashboard from './components/CustomerDashboard';
@@ -19,28 +19,8 @@ const App: React.FC = () => {
   
   // Saved Credentials
   const [savedCreds, setSavedCreds] = useState<SavedCredential[]>([]);
-  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
-    // FRESH START LOGIC: Automatically wipe data if this specific flag is missing
-    const performOneTimeReset = async () => {
-        const hasReset = localStorage.getItem('FRESH_START_V1');
-        if (!hasReset) {
-            console.log("Performing One-Time Fresh Start Wipe...");
-            setResetting(true);
-            try {
-                await AdminService.resetSystem();
-                localStorage.setItem('FRESH_START_V1', 'true');
-                console.log("System Wiped Successfully.");
-            } catch (e) {
-                console.error("Wipe failed", e);
-            } finally {
-                setResetting(false);
-            }
-        }
-    };
-    performOneTimeReset();
-
     const currentUser = AuthService.getCurrentUser();
     if (currentUser) setUser(currentUser);
     refreshSavedCreds();
@@ -150,17 +130,6 @@ const App: React.FC = () => {
         setUser(updatedUser);
     }
   };
-
-  if (resetting) {
-      return (
-          <div className="min-h-screen flex items-center justify-center bg-gray-100">
-              <div className="text-center">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-2">Initializing Fresh Start...</h2>
-                  <p className="text-gray-500">Wiping old salon data and credentials.</p>
-              </div>
-          </div>
-      );
-  }
 
   if (user) {
     if (user.role === UserRole.ADMIN) return <AdminDashboard onLogout={handleLogout} />;

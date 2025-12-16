@@ -25,8 +25,7 @@ import { createClient } from '@supabase/supabase-js';
     status text,
     last_activity_date text,
     closed_dates jsonb DEFAULT '[]',
-    custom_slots jsonb DEFAULT '[]',
-    image text -- Stores Base64 string of the salon image
+    custom_slots jsonb DEFAULT '[]'
   );
 
   -- 3. CREATE PRIVATE CREDENTIALS TABLE (Passwords & Owner Details)
@@ -285,8 +284,7 @@ export const SalonService = {
         lastActivityDate: s.last_activity_date,
         closedDates: s.closed_dates || [],
         customSlots: s.custom_slots || [],
-        bookingCount: bookingCounts[s.id] || 0,
-        image: s.image || undefined
+        bookingCount: bookingCounts[s.id] || 0
       });
     }
     
@@ -321,8 +319,7 @@ export const SalonService = {
       status: s.status,
       lastActivityDate: s.last_activity_date,
       closedDates: s.closed_dates || [],
-      customSlots: s.custom_slots || [],
-      image: s.image || undefined
+      customSlots: s.custom_slots || []
     };
   },
 
@@ -341,8 +338,7 @@ export const SalonService = {
       status: SalonStatus.ACTIVE,
       last_activity_date: new Date().toISOString(),
       closed_dates: [],
-      custom_slots: [],
-      image: data.image || null
+      custom_slots: []
     };
 
     const { error: publicError } = await supabase.from('salons_public').insert(publicPayload);

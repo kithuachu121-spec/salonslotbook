@@ -98,8 +98,7 @@ const AdminDashboard: React.FC<Props> = ({ onLogout }) => {
             openTime: formData.openTime,
             closeTime: formData.closeTime,
             password: formData.ownerPassword,
-            services: defaultServices,
-            image: undefined
+            services: defaultServices
         });
 
         alert(`Salon Registered! ID: ${newSalon.id}. Pass this to the owner.`);
