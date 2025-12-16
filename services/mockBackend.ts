@@ -594,3 +594,16 @@ export const ReviewService = {
     return payload;
   }
 };
+
+export const AdminService = {
+  resetSystem: async () => {
+    // Dangerous Operation: Wipes all data to give a fresh start
+    // Using .neq('id', '0') to select all rows effectively
+    await supabase.from('reviews').delete().neq('id', '0');
+    await supabase.from('bookings').delete().neq('id', '0');
+    await supabase.from('salon_credentials').delete().neq('salon_id', '0');
+    await supabase.from('salons_public').delete().neq('id', '0');
+    await supabase.from('users').delete().neq('role', 'ADMIN');
+    localStorage.clear();
+  }
+};

@@ -50,7 +50,6 @@ const AdminDashboard: React.FC<Props> = ({ onLogout }) => {
     if (error?.error_description && typeof error.error_description === 'string') return error.error_description;
     if (error?.details && typeof error.details === 'string') return error.details;
     
-    // Fallback for objects to prevent [object Object]
     try {
         return JSON.stringify(error);
     } catch (e) {
@@ -151,7 +150,7 @@ const AdminDashboard: React.FC<Props> = ({ onLogout }) => {
             </div>
         </div>
 
-        {activeTab === 'list' ? (
+        {activeTab === 'list' && (
           <div className="bg-white rounded-xl shadow-md overflow-hidden">
             <div className="p-4 border-b bg-gray-50 flex items-center gap-4">
                  <div className="relative w-full max-w-sm">
@@ -214,7 +213,9 @@ const AdminDashboard: React.FC<Props> = ({ onLogout }) => {
                 </div>
             )}
           </div>
-        ) : (
+        )}
+
+        {activeTab === 'register' && (
           <div className="bg-white rounded-xl shadow-md p-8 max-w-2xl mx-auto">
              {!isAuthenticatedReg ? (
                <div className="text-center py-10">
