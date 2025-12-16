@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SalonService } from '../services/mockBackend';
 import { Salon, SalonStatus, Service } from '../types';
-import { LogOut, Plus, Store, AlertCircle, CheckCircle, Trash2, Search } from 'lucide-react';
+import { LogOut, Plus, Store, AlertCircle, CheckCircle, Search } from 'lucide-react';
 
 interface Props {
   onLogout: () => void;
@@ -44,22 +44,17 @@ const AdminDashboard: React.FC<Props> = ({ onLogout }) => {
   };
 
   const getErrorMessage = (error: any) => {
+    if (!error) return "Unknown error";
     if (typeof error === 'string') return error;
     if (error?.message && typeof error.message === 'string') return error.message;
     if (error?.error_description && typeof error.error_description === 'string') return error.error_description;
     if (error?.details && typeof error.details === 'string') return error.details;
-    return "An unexpected error occurred";
-  };
-
-  const handleDeleteSalon = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this salon? All associated bookings, reviews, and owner credentials will be permanently removed.")) {
-      try {
-        await SalonService.delete(id);
-        await loadSalons();
-      } catch (error) {
-        console.error("Delete failed", error);
-        alert(`Failed to delete salon: ${getErrorMessage(error)}`);
-      }
+    
+    // Fallback for objects to prevent [object Object]
+    try {
+        return JSON.stringify(error);
+    } catch (e) {
+        return "An unexpected error occurred";
     }
   };
 
@@ -185,12 +180,11 @@ const AdminDashboard: React.FC<Props> = ({ onLogout }) => {
                         <th className="p-4 font-semibold text-gray-600">Password</th>
                         <th className="p-4 font-semibold text-gray-600">Total Bookings</th>
                         <th className="p-4 font-semibold text-gray-600">Status</th>
-                        <th className="p-4 font-semibold text-gray-600">Actions</th>
                     </tr>
                     </thead>
                     <tbody>
                     {filteredSalons.length === 0 ? (
-                        <tr><td colSpan={8} className="p-6 text-center text-gray-400">No salons found matching your search.</td></tr>
+                        <tr><td colSpan={7} className="p-6 text-center text-gray-400">No salons found matching your search.</td></tr>
                     ) : (
                         filteredSalons.map(salon => (
                         <tr key={salon.id} className="border-b last:border-0 hover:bg-gray-50 transition">
@@ -211,11 +205,6 @@ const AdminDashboard: React.FC<Props> = ({ onLogout }) => {
                                 {salon.status === SalonStatus.ACTIVE ? <CheckCircle size={12} /> : <AlertCircle size={12} />}
                                 {salon.status}
                             </span>
-                            </td>
-                            <td className="p-4">
-                            <button onClick={() => handleDeleteSalon(salon.id)} className="text-gray-400 hover:text-red-600 transition p-2 hover:bg-red-50 rounded-full" title="Delete Salon">
-                                <Trash2 size={18} />
-                            </button>
                             </td>
                         </tr>
                         ))
