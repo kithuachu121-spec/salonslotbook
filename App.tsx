@@ -131,10 +131,16 @@ const App: React.FC = () => {
     }
   };
 
+  const Watermark = () => (
+    <div className="fixed bottom-4 right-6 z-[9999] pointer-events-none select-none mix-blend-difference">
+        <span className="text-xs font-black text-white uppercase tracking-[0.2em] opacity-80 shadow-sm">Developed By Krishnanand A</span>
+    </div>
+  );
+
   if (user) {
-    if (user.role === UserRole.ADMIN) return <AdminDashboard onLogout={handleLogout} />;
-    if (user.role === UserRole.OWNER) return <OwnerDashboard user={user} onLogout={handleLogout} />;
-    if (user.role === UserRole.CUSTOMER) return <CustomerDashboard user={user} onLogout={handleLogout} onUserUpdate={handleUserUpdate} />;
+    if (user.role === UserRole.ADMIN) return <><AdminDashboard onLogout={handleLogout} /><Watermark /></>;
+    if (user.role === UserRole.OWNER) return <><OwnerDashboard user={user} onLogout={handleLogout} /><Watermark /></>;
+    if (user.role === UserRole.CUSTOMER) return <><CustomerDashboard user={user} onLogout={handleLogout} onUserUpdate={handleUserUpdate} /><Watermark /></>;
   }
 
   return (
@@ -257,6 +263,7 @@ const App: React.FC = () => {
             </form>
         </div>
       </div>
+      <Watermark />
     </div>
   );
 };
