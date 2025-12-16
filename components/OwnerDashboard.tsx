@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Salon, Booking, Service, BookingStatus } from '../types';
 import { SalonService, BookingService } from '../services/mockBackend';
-import { Calendar, Clock, Scissors, Check, X, LogOut, Phone, User as UserIcon, CalendarOff, Power, PlusCircle, Trash2 } from 'lucide-react';
+import { Calendar, Clock, Scissors, Check, X, LogOut, Phone, User as UserIcon, CalendarOff, Power, PlusCircle, Trash2, Copy } from 'lucide-react';
 
 interface Props {
   user: User;
@@ -90,6 +90,11 @@ const OwnerDashboard: React.FC<Props> = ({ user, onLogout }) => {
     loadData(salon.id);
   };
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    alert(`Copied ${text} to clipboard!`);
+  };
+
   const timeSlots = salon ? SalonService.generateSlots(salon.openTime, salon.closeTime) : [];
   const customSlotsForDate = salon?.customSlots?.filter(s => s.date === manageDate).map(s => s.time) || [];
 
@@ -155,8 +160,11 @@ const OwnerDashboard: React.FC<Props> = ({ user, onLogout }) => {
                                      <div className="flex items-center gap-1 text-sm font-medium text-slate-700 bg-slate-50 px-2 py-1 rounded">
                                         <UserIcon size={14} /> {booking.customerName}
                                      </div>
-                                     <div className="flex items-center gap-1 text-sm font-medium text-slate-700 bg-slate-50 px-2 py-1 rounded">
+                                     <div className="flex items-center gap-1 text-sm font-medium text-slate-700 bg-slate-50 px-2 py-1 rounded group">
                                         <Phone size={14} /> {booking.customerPhone}
+                                        <button onClick={() => copyToClipboard(booking.customerPhone)} className="ml-1 text-gray-400 hover:text-rose-600 transition" title="Copy Number">
+                                            <Copy size={12} />
+                                        </button>
                                      </div>
                                 </div>
                             </div>

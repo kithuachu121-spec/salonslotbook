@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Salon, Booking, Service, BookingStatus } from '../types';
-import { SalonService, BookingService, AuthService } from '../services/mockBackend';
-import { Search, MapPin, Star, Calendar as CalIcon, Clock, ChevronRight, User as UserIcon, LogOut, CalendarOff, Bell, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { SalonService, BookingService, AuthService, ReviewService } from '../services/mockBackend';
+import { Search, MapPin, Star, Calendar as CalIcon, Clock, ChevronRight, User as UserIcon, LogOut, CalendarOff, Bell, CheckCircle, XCircle, AlertCircle, Phone, Scissors } from 'lucide-react';
 
 interface Props {
   user: User;
@@ -26,6 +26,12 @@ const CustomerDashboard: React.FC<Props> = ({ user, onLogout, onUserUpdate }) =>
 
   // Reminder State
   const [reminderBooking, setReminderBooking] = useState<Booking | null>(null);
+
+  // Review State
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedBookingForReview, setSelectedBookingForReview] = useState<Booking | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
 
   useEffect(() => {
     loadSalons();
@@ -157,6 +163,32 @@ const CustomerDashboard: React.FC<Props> = ({ user, onLogout, onUserUpdate }) =>
         refreshBookings();
     }
   };
+  
+  // Review Handlers
+  const openReviewModal = (booking: Booking) => {
+      setSelectedBookingForReview(booking);
+      setReviewRating(5);
+      setReviewComment('');
+      setReviewModalOpen(true);
+  };
+
+  const submitReview = async () => {
+      if (!selectedBookingForReview) return;
+      try {
+          await ReviewService.create({
+              salonId: selectedBookingForReview.salonId,
+              customerId: user.id,
+              customerName: user.name || 'Valued Customer',
+              rating: reviewRating,
+              comment: reviewComment
+          });
+          alert('Review submitted successfully!');
+          setReviewModalOpen(false);
+      } catch (e) {
+          console.error(e);
+          alert('Failed to submit review. Please try again.');
+      }
+  };
 
   // Helper to get next 7 days, excluding Tuesdays
   const getNext7Days = () => {
@@ -232,6 +264,39 @@ const CustomerDashboard: React.FC<Props> = ({ user, onLogout, onUserUpdate }) =>
                 </div>
             </div>
         )}
+        
+        {/* Review Modal */}
+        {reviewModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-bounce-short">
+                    <div className="p-6">
+                        <h3 className="text-xl font-bold mb-2 text-slate-900">Rate your experience</h3>
+                        <p className="text-gray-500 mb-6">How was your service at <span className="font-bold text-slate-800">{selectedBookingForReview?.salonName}</span>?</p>
+                        
+                        {/* Star Rating */}
+                        <div className="flex gap-2 mb-6 justify-center">
+                            {[1, 2, 3, 4, 5].map(star => (
+                                <button key={star} onClick={() => setReviewRating(star)} className="transition hover:scale-110 focus:outline-none">
+                                    <Star size={32} className={star <= reviewRating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"} />
+                                </button>
+                            ))}
+                        </div>
+
+                        <textarea 
+                            className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-rose-500 outline-none h-32 resize-none mb-4 text-sm"
+                            placeholder="Tell us more about your experience..."
+                            value={reviewComment}
+                            onChange={e => setReviewComment(e.target.value)}
+                        ></textarea>
+
+                        <div className="flex gap-3">
+                            <button onClick={() => setReviewModalOpen(false)} className="flex-1 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition">Cancel</button>
+                            <button onClick={submitReview} className="flex-1 py-2 bg-rose-600 text-white font-bold rounded-lg hover:bg-rose-700 transition shadow-md">Submit Review</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
 
         {/* Header */}
         <div className="bg-white sticky top-0 z-10 shadow-sm">
@@ -253,10 +318,17 @@ const CustomerDashboard: React.FC<Props> = ({ user, onLogout, onUserUpdate }) =>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {salons.map(salon => (
                             <div key={salon.id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 group">
-                                <div className="h-32 bg-slate-200 flex items-center justify-center text-gray-400 relative">
-                                    <span className="text-3xl font-light">Image Placeholder</span>
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                                    <h3 className="absolute bottom-3 left-4 text-white font-bold text-xl drop-shadow-md">{salon.name}</h3>
+                                <div className="h-40 bg-gradient-to-br from-slate-800 to-slate-900 p-6 flex flex-col justify-center items-center text-center relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                                        <Scissors size={100} className="text-white" /> 
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-white mb-2 relative z-10 tracking-tight">{salon.name}</h3>
+                                    <div className="text-rose-200 text-sm font-medium relative z-10 flex flex-col gap-1">
+                                        <span>Owner: {salon.ownerName}</span>
+                                        <span className="flex items-center gap-1 justify-center">
+                                            <Phone size={14} className="text-rose-400" /> {salon.ownerPhone || salon.phone}
+                                        </span>
+                                    </div>
                                 </div>
                                 <div className="p-4">
                                     <div className="flex items-start justify-between">
@@ -284,11 +356,23 @@ const CustomerDashboard: React.FC<Props> = ({ user, onLogout, onUserUpdate }) =>
                 <div className="bg-white rounded-xl shadow-lg overflow-hidden">
                     <button onClick={() => setView('browse')} className="p-4 text-gray-500 hover:text-slate-900 text-sm flex items-center gap-1">← Back to salons</button>
                     
+                    <div className="w-full h-32 bg-slate-900 flex items-center px-8 relative overflow-hidden">
+                        <div className="absolute right-10 top-1/2 -translate-y-1/2 opacity-20">
+                            <Scissors size={80} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-bold text-white mb-1">{selectedSalon.name}</h1>
+                            <div className="text-rose-200 text-sm flex items-center gap-4">
+                                <span>Owner: {selectedSalon.ownerName}</span>
+                                <span className="flex items-center gap-1"><Phone size={12} /> {selectedSalon.ownerPhone || selectedSalon.phone}</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="px-6 pb-6 pt-4">
-                        <h1 className="text-3xl font-bold text-slate-900 mb-2">{selectedSalon.name}</h1>
-                        <p className="text-gray-500 flex items-center gap-2"><MapPin size={16} /> {selectedSalon.location}</p>
+                        <p className="text-gray-500 flex items-center gap-2 mb-6"><MapPin size={16} /> {selectedSalon.location}</p>
                         
-                        <div className="mt-8">
+                        <div className="mt-4">
                             <h3 className="font-bold text-lg mb-4">1. Select Service</h3>
                             <div className="space-y-2">
                                 {selectedSalon.services.map(s => (
@@ -397,7 +481,7 @@ const CustomerDashboard: React.FC<Props> = ({ user, onLogout, onUserUpdate }) =>
                                     </span>
                                 </div>
                                 {b.status === BookingStatus.COMPLETED && (
-                                    <button className="mt-4 text-rose-600 text-sm font-medium hover:underline">Write a Review</button>
+                                    <button onClick={() => openReviewModal(b)} className="mt-4 text-rose-600 text-sm font-medium hover:underline">Write a Review</button>
                                 )}
                             </div>
                         ))}

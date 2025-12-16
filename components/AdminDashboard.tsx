@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SalonService } from '../services/mockBackend';
 import { Salon, SalonStatus, Service } from '../types';
-import { LogOut, Plus, Store, AlertCircle, CheckCircle, Trash2 } from 'lucide-react';
+import { LogOut, Plus, Store, AlertCircle, CheckCircle, Trash2, Search } from 'lucide-react';
 
 interface Props {
   onLogout: () => void;
@@ -15,9 +15,19 @@ const AdminDashboard: React.FC<Props> = ({ onLogout }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState('');
   const [formError, setFormError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Registration Form State
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    ownerName: string;
+    email: string;
+    phone: string;
+    location: string;
+    openTime: string;
+    closeTime: string;
+    ownerPassword: string;
+  }>({
     name: '', ownerName: '', email: '', phone: '', location: '', 
     openTime: '09:00', closeTime: '18:00', ownerPassword: ''
   });
@@ -35,7 +45,10 @@ const AdminDashboard: React.FC<Props> = ({ onLogout }) => {
 
   const getErrorMessage = (error: any) => {
     if (typeof error === 'string') return error;
-    return error?.message || error?.error_description || "An unexpected error occurred";
+    if (error?.message && typeof error.message === 'string') return error.message;
+    if (error?.error_description && typeof error.error_description === 'string') return error.error_description;
+    if (error?.details && typeof error.details === 'string') return error.details;
+    return "An unexpected error occurred";
   };
 
   const handleDeleteSalon = async (id: string) => {
@@ -91,7 +104,8 @@ const AdminDashboard: React.FC<Props> = ({ onLogout }) => {
             openTime: formData.openTime,
             closeTime: formData.closeTime,
             password: formData.ownerPassword,
-            services: defaultServices
+            services: defaultServices,
+            image: undefined
         });
 
         alert(`Salon Registered! ID: ${newSalon.id}. Pass this to the owner.`);
@@ -106,6 +120,11 @@ const AdminDashboard: React.FC<Props> = ({ onLogout }) => {
         setFormError(`Registration failed: ${getErrorMessage(e)}`);
     }
   };
+
+  const filteredSalons = salons.filter(salon => 
+    salon.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    salon.ownerName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -139,6 +158,19 @@ const AdminDashboard: React.FC<Props> = ({ onLogout }) => {
 
         {activeTab === 'list' ? (
           <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="p-4 border-b bg-gray-50 flex items-center gap-4">
+                 <div className="relative w-full max-w-sm">
+                    <Search className="absolute left-3 top-3 text-gray-400" size={18} />
+                    <input 
+                        type="text" 
+                        placeholder="Search salons or owners..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500 outline-none text-sm"
+                    />
+                 </div>
+            </div>
+
             {isLoading ? (
                 <div className="p-8 text-center text-gray-500">Loading Salons from Database...</div>
             ) : (
@@ -148,34 +180,40 @@ const AdminDashboard: React.FC<Props> = ({ onLogout }) => {
                     <tr>
                         <th className="p-4 font-semibold text-gray-600">Salon Name</th>
                         <th className="p-4 font-semibold text-gray-600">ID</th>
-                        <th className="p-4 font-semibold text-gray-600">Owner</th>
+                        <th className="p-4 font-semibold text-gray-600">Owner Name</th>
+                        <th className="p-4 font-semibold text-gray-600">Owner Phone</th>
+                        <th className="p-4 font-semibold text-gray-600">Password</th>
+                        <th className="p-4 font-semibold text-gray-600">Total Bookings</th>
                         <th className="p-4 font-semibold text-gray-600">Status</th>
-                        <th className="p-4 font-semibold text-gray-600">Activity</th>
                         <th className="p-4 font-semibold text-gray-600">Actions</th>
                     </tr>
                     </thead>
                     <tbody>
-                    {salons.length === 0 ? (
-                        <tr><td colSpan={6} className="p-6 text-center text-gray-400">No salons registered yet.</td></tr>
+                    {filteredSalons.length === 0 ? (
+                        <tr><td colSpan={8} className="p-6 text-center text-gray-400">No salons found matching your search.</td></tr>
                     ) : (
-                        salons.map(salon => (
+                        filteredSalons.map(salon => (
                         <tr key={salon.id} className="border-b last:border-0 hover:bg-gray-50 transition">
-                            <td className="p-4 font-medium flex items-center gap-3">
+                            <td className="p-4 font-bold text-slate-800">
                                 {salon.name}
                             </td>
                             <td className="p-4 text-sm font-mono bg-gray-50 rounded text-gray-500">{salon.id}</td>
-                            <td className="p-4">{salon.ownerName}</td>
+                            <td className="p-4 text-sm">{salon.ownerName}</td>
+                            <td className="p-4 text-sm font-medium">{salon.ownerPhone}</td>
+                            <td className="p-4 text-sm font-mono text-gray-500 bg-gray-100 rounded px-2 py-1 w-max">{salon.password || 'N/A'}</td>
+                            <td className="p-4 text-center">
+                                <span className="bg-blue-100 text-blue-800 py-1 px-3 rounded-full font-bold text-xs shadow-sm">
+                                    {salon.bookingCount}
+                                </span>
+                            </td>
                             <td className="p-4">
                             <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${salon.status === SalonStatus.ACTIVE ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                 {salon.status === SalonStatus.ACTIVE ? <CheckCircle size={12} /> : <AlertCircle size={12} />}
                                 {salon.status}
                             </span>
                             </td>
-                            <td className="p-4 text-sm text-gray-500">
-                                {new Date(salon.lastActivityDate).toLocaleDateString()}
-                            </td>
                             <td className="p-4">
-                            <button onClick={() => handleDeleteSalon(salon.id)} className="text-gray-400 hover:text-red-600 transition">
+                            <button onClick={() => handleDeleteSalon(salon.id)} className="text-gray-400 hover:text-red-600 transition p-2 hover:bg-red-50 rounded-full" title="Delete Salon">
                                 <Trash2 size={18} />
                             </button>
                             </td>

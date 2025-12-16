@@ -11,6 +11,7 @@ import { createClient } from '@supabase/supabase-js';
   -- DROP TABLE IF EXISTS salon_credentials;
   -- DROP TABLE IF EXISTS salons_public;
   -- DROP TABLE IF EXISTS users;
+  -- DROP TABLE IF EXISTS reviews;
 
   -- 2. CREATE PUBLIC SALON DATA TABLE (No passwords here)
   CREATE TABLE salons_public (
@@ -24,7 +25,8 @@ import { createClient } from '@supabase/supabase-js';
     status text,
     last_activity_date text,
     closed_dates jsonb DEFAULT '[]',
-    custom_slots jsonb DEFAULT '[]'
+    custom_slots jsonb DEFAULT '[]',
+    image text -- Stores Base64 string of the salon image
   );
 
   -- 3. CREATE PRIVATE CREDENTIALS TABLE (Passwords & Owner Details)
@@ -60,6 +62,17 @@ import { createClient } from '@supabase/supabase-js';
     status text,
     created_at text,
     customer_confirmed boolean DEFAULT false
+  );
+
+  -- 6. CREATE REVIEWS TABLE
+  CREATE TABLE reviews (
+    id text PRIMARY KEY,
+    salon_id text REFERENCES salons_public(id) ON DELETE CASCADE,
+    customer_id text,
+    customer_name text,
+    rating numeric,
+    comment text,
+    date text
   );
   
   ===================================================================
@@ -219,12 +232,21 @@ export const AuthService = {
 
 export const SalonService = {
   getAll: async (): Promise<Salon[]> => {
-    // Fetch public info AND join credentials to get Owner Name for the Admin dashboard
+    // Fetch public info AND join credentials to get Owner Name and Password for the Admin dashboard
     const { data: salons } = await supabase
       .from('salons_public')
-      .select('*, salon_credentials(owner_name, private_email)');
+      .select('*, salon_credentials(owner_name, private_email, login_phone, password)');
 
     if (!salons) return [];
+
+    // Fetch all bookings to count them per salon (robust approach for mock backend)
+    const { data: allBookings } = await supabase.from('bookings').select('salon_id');
+    const bookingCounts: Record<string, number> = {};
+    if (allBookings) {
+        allBookings.forEach((b: any) => {
+            bookingCounts[b.salon_id] = (bookingCounts[b.salon_id] || 0) + 1;
+        });
+    }
 
     const now = new Date();
     const updatedSalons: Salon[] = [];
@@ -253,14 +275,18 @@ export const SalonService = {
         location: s.location,
         phone: s.public_phone,
         email: creds?.private_email || '', 
-        ownerName: creds?.owner_name || 'Unknown', 
+        ownerName: creds?.owner_name || 'Unknown',
+        ownerPhone: creds?.login_phone || s.public_phone, 
+        password: creds?.password, // Include password for Admin view
         openTime: s.open_time,
         closeTime: s.close_time,
         services: s.services,
         status: finalStatus,
         lastActivityDate: s.last_activity_date,
         closedDates: s.closed_dates || [],
-        customSlots: s.custom_slots || []
+        customSlots: s.custom_slots || [],
+        bookingCount: bookingCounts[s.id] || 0,
+        image: s.image || undefined
       });
     }
     
@@ -270,7 +296,7 @@ export const SalonService = {
   getById: async (id: string): Promise<Salon | undefined> => {
     const { data: s } = await supabase
         .from('salons_public')
-        .select('*, salon_credentials(owner_name, private_email)')
+        .select('*, salon_credentials(owner_name, private_email, login_phone)')
         .eq('id', id)
         .single();
         
@@ -288,13 +314,15 @@ export const SalonService = {
       phone: s.public_phone,
       email: creds?.private_email || '',
       ownerName: creds?.owner_name || 'Verified Owner',
+      ownerPhone: creds?.login_phone || s.public_phone,
       openTime: s.open_time,
       closeTime: s.close_time,
       services: s.services,
       status: s.status,
       lastActivityDate: s.last_activity_date,
       closedDates: s.closed_dates || [],
-      customSlots: s.custom_slots || []
+      customSlots: s.custom_slots || [],
+      image: s.image || undefined
     };
   },
 
@@ -313,7 +341,8 @@ export const SalonService = {
       status: SalonStatus.ACTIVE,
       last_activity_date: new Date().toISOString(),
       closed_dates: [],
-      custom_slots: []
+      custom_slots: [],
+      image: data.image || null
     };
 
     const { error: publicError } = await supabase.from('salons_public').insert(publicPayload);
@@ -347,13 +376,25 @@ export const SalonService = {
   },
 
   delete: async (salonId: string): Promise<void> => {
+    // Explicitly delete all related data to ensure complete removal
+    
+    // 1. Delete Reviews
+    const { error: reviewError } = await supabase.from('reviews').delete().eq('salon_id', salonId);
+    if (reviewError) console.error("Error deleting reviews:", reviewError);
+
+    // 2. Delete Bookings
     const { error: bookingError } = await supabase.from('bookings').delete().eq('salon_id', salonId);
     if (bookingError) throw new Error(bookingError.message || "Failed to delete bookings");
 
-    // Deleting public salon will cascade delete credentials due to FK constraint
+    // 3. Delete Credentials (explicitly, though cascade usually handles it)
+    const { error: credError } = await supabase.from('salon_credentials').delete().eq('salon_id', salonId);
+    if (credError) console.error("Error deleting credentials:", credError);
+
+    // 4. Delete Public Salon Record
     const { error: salonError } = await supabase.from('salons_public').delete().eq('id', salonId);
     if (salonError) throw new Error(salonError.message || "Failed to delete salon public record");
 
+    // 5. Clean up Local Storage
     AuthService.removeCredential('owner', salonId);
   },
 
@@ -531,5 +572,25 @@ export const BookingService = {
       .neq('status', BookingStatus.CANCELLED);
     
     return data && data.length > 0;
+  }
+};
+
+export const ReviewService = {
+  create: async (review: Omit<Review, 'id' | 'date'>) => {
+    const newId = `rev_${Date.now()}`;
+    const payload = {
+      id: newId,
+      salon_id: review.salonId,
+      customer_id: review.customerId,
+      customer_name: review.customerName,
+      rating: review.rating,
+      comment: review.comment,
+      date: new Date().toISOString().split('T')[0]
+    };
+    
+    const { error } = await supabase.from('reviews').insert(payload);
+    if (error) throw error;
+    
+    return payload;
   }
 };
